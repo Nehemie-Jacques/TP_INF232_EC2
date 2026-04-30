@@ -57,6 +57,11 @@ def create_app(config_class=Config):
             return redirect(url_for("data.dashboard"))
         return redirect(url_for("auth.login"))
 
+    # Health check endpoint for external load balancers / Render
+    @app.route('/ping')
+    def ping():
+        return 'pong', 200
+
     # Gestion des erreurs
     @app.errorhandler(404)
     def not_found(e):
