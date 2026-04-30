@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Classification non-supervisée — INF232 EC2{% endblock %}
+{% block page_title %}<i class="bi bi-collection me-2"></i>Classification non-supervisée{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Panneau gauche -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-sliders me-2"></i>Algorithme & Paramètres</div>
+      <div class="card-body p-3">
+
+        <!-- Navigation algorithmes -->
+        <div class="mb-3">
+          <div class="btn-group-vertical w-100" role="group">
+            <a href="{{ url_for('unsupervised.kmeans') }}"
+               class="btn btn-sm text-start {% if method == 'kmeans' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+              <i class="bi bi-collection me-2"></i>K-Means
+            </a>
+            <a href="{{ url_for('unsupervised.dbscan') }}"
+               class="btn btn-sm text-start {% if method == 'dbscan' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+              <i class="bi bi-radar me-2"></i>DBSCAN
+            </a>
+            <a href="{{ url_for('unsupervised.hierarchical') }}"
+               class="btn btn-sm text-start {% if method == 'hierarchical' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+              <i class="bi bi-git me-2"></i>CAH (Hiérarchique)
+            </a>
+          </div>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger py-2" style="font-size:13px">
+          <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" class="analysis-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="mb-3">
+            <label class="form-label">Variables numériques
+              <span class="badge bg-light text-secondary border ms-1">Ctrl+clic</span>
+            </label>
+            <select name="feature_cols" class="form-select form-select-sm" multiple required>
+              {% for col in numeric_cols %}
+              <option value="{{ col }}">{{ col }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          {% if method == 'kmeans' %}
+          <div class="mb-3">
+            <label class="form-label">Nombre de clusters (k)</label>
+            <input type="number" name="n_clusters" class="form-control form-control-sm"
+                   value="3" min="2" max="15">
+            <div class="form-text">La méthode du coude vous aide à choisir k.</div>
+          </div>
+
+          {% elif method == 'dbscan' %}
+          <div class="mb-2">
+            <label class="form-label">Epsilon (ε) — rayon de voisinage</label>
+            <input type="number" name="eps" class="form-control form-control-sm"
+                   value="0.5" min="0.01" step="0.05">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">MinPts — points minimum</label>
+            <input type="number" name="min_samples" class="form-control form-control-sm"
+                   value="5" min="2" max="50">
+          </div>
+          <div class="alert alert-info py-2 mt-2" style="font-size:11px">
+            <i class="bi bi-info-circle me-1"></i>
+            ε trop petit = beaucoup de bruit. ε trop grand = tout en 1 cluster.
+          </div>
+
+          {% elif method == 'hierarchical' %}
+          <div class="mb-2">
+            <label class="form-label">Nombre de clusters</label>
+            <input type="number" name="n_clusters" class="form-control form-control-sm"
+                   value="3" min="2" max="15">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Méthode de liaison</label>
+            <select name="linkage_method" class="form-select form-select-sm">
+              <option value="ward" selected>Ward (variance minimale)</option>
+              <option value="complete">Complete (diamètre)</option>
+              <option value="average">Average (moyenne)</option>
+              <option value="single">Single (chaîne)</option>
+            </select>
+          </div>
+          {% endif %}
+
+          <button type="submit" class="btn btn-run w-100 mt-2">
+            <i class="bi bi-play-fill me-2"></i>
+            {% if method == 'kmeans' %}Clustering K-Means
+            {% elif method == 'dbscan' %}Clustering DBSCAN
+            {% else %}Clustering CAH{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Théorie -->
+    <div class="card mt-3">
+      <div class="card-header"><i class="bi bi-book me-2"></i>À propos</div>
+      <div class="card-body p-3" style="font-size:12px;color:#374151">
+        {% if method == 'kmeans' %}
+        <p><strong>K-Means</strong> : partitionne les données en k groupes en minimisant l'inertie intra-cluster.</p>
+        <p><strong>Score silhouette</strong> : proche de 1 = bons clusters. Proche de 0 = clusters qui se chevauchent.</p>
+        <p class="mb-0"><strong>Méthode du coude</strong> : cherchez le "coude" dans la courbe d'inertie.</p>
+        {% elif method == 'dbscan' %}
+        <p><strong>DBSCAN</strong> : regroupe les points denses, identifie les outliers comme "bruit".</p>
+        <p><strong>Avantage</strong> : découvre des clusters de forme arbitraire, pas besoin de spécifier k.</p>
+        <p class="mb-0"><strong>Inconvénient</strong> : sensible aux paramètres ε et MinPts.</p>
+        {% else %}
+        <p><strong>CAH</strong> : construit une hiérarchie de clusters, visualisée par le dendrogramme.</p>
+        <p><strong>Ward</strong> : minimise la variance totale — méthode la plus robuste en général.</p>
+        <p class="mb-0"><strong>Dendrogramme</strong> : la hauteur de coupure détermine le nombre de clusters.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Résultats -->
+  <div class="col-lg-8">
+    {% if result %}
+    <div class="result-section">
+
+      <!-- Métriques -->
+      <div class="row g-3 mb-4">
+        <div class="col-4">
+          <div class="metric-card text-center">
+            <div class="metric-label">Clusters</div>
+            <div class="metric-value text-primary">{{ result.n_clusters }}</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="metric-card text-center">
+            <div class="metric-label">Silhouette</div>
+            <div class="metric-value {% if result.silhouette_score != 'N/A' and result.silhouette_score >= 0.5 %}text-success{% elif result.silhouette_score != 'N/A' and result.silhouette_score >= 0.25 %}text-warning{% else %}text-danger{% endif %}">
+              {{ result.silhouette_score }}
+            </div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="metric-card text-center">
+            <div class="metric-label">Observations</div>
+            <div class="metric-value">{{ result.n_samples }}</div>
+          </div>
+        </div>
+      </div>
+
+      {% if method == 'dbscan' %}
+      <div class="alert alert-secondary py-2 mb-4" style="font-size:13px">
+        <i class="bi bi-exclamation-circle me-2"></i>
+        Points classés comme <strong>bruit</strong> : {{ result.n_noise }}
+        ({{ result.noise_percent }}% des données)
+      </div>
+      {% endif %}
+
+      {% if method == 'kmeans' %}
+      <div class="card mb-4 p-3" style="background:#eff6ff;border-color:#bfdbfe">
+        <div style="font-size:13px;color:#1e40af">
+          <i class="bi bi-lightbulb me-2"></i>
+          <strong>k optimal selon silhouette :</strong> {{ result.optimal_k_silhouette }}
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <strong>Inertie :</strong> {{ result.inertia }}
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <strong>Davies-Bouldin :</strong> {{ result.davies_bouldin }}
+          <span data-bs-toggle="tooltip" title="Plus proche de 0 = meilleur clustering">
+            <i class="bi bi-question-circle" style="font-size:11px"></i>
+          </span>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Taille des clusters -->
+      <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-pie-chart me-2"></i>Répartition des clusters</div>
+        <div class="card-body p-3">
+          {% if result.cluster_sizes %}
+          <div class="row g-3">
+            {% for cluster, size in result.cluster_sizes.items() %}
+            <div class="col-md-4">
+              <div class="text-center p-2" style="background:#f8fafc;border-radius:8px;border:1px solid #e8ecf0">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280">{{ cluster }}</div>
+                <div style="font-size:22px;font-weight:700;color:#185FA5">{{ size }}</div>
+                {% if result.cluster_percentages is defined %}
+                <div style="font-size:11px;color:#9ca3af">{{ result.cluster_percentages[cluster] }}%</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Graphique -->
+      <div class="card">
+        <div class="card-header"><i class="bi bi-bar-chart-line me-2"></i>Visualisation</div>
+        <div class="card-body p-3">
+          <div class="plot-container">
+            <img src="data:image/png;base64,{{ result.plot }}" alt="Clustering" class="img-fluid">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-collection" style="font-size:52px;color:#cbd5e1"></i>
+        <h5 class="mt-3 text-muted">Lancez le clustering</h5>
+        <p class="text-muted" style="font-size:13px">
+          Sélectionnez les variables et paramètres dans le panneau gauche.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Saisie manuelle — INF232 EC2{% endblock %}
+{% block page_title %}<i class="bi bi-keyboard me-2"></i>Saisie manuelle de données{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-input-cursor me-2"></i>Entrer les données</div>
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('data.form') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="mb-3">
+            <label class="form-label">Nom du dataset</label>
+            <input type="text" name="dataset_name" class="form-control"
+                   placeholder="Ex : Notes étudiants" value="Saisie manuelle">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Noms des colonnes
+              <span class="text-muted fw-normal">(séparés par des virgules)</span>
+            </label>
+            <input type="text" name="columns" id="columnsInput" class="form-control"
+                   placeholder="age, taille, poids, score" required>
+            <div class="form-text">Ex : <code>nom, age, note, mention</code></div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Données
+              <span class="text-muted fw-normal">(une ligne par observation, valeurs séparées par des virgules)</span>
+            </label>
+            <textarea name="rows_data" id="rowsData" class="form-control"
+                      rows="10" placeholder="20, 170, 65, 14&#10;22, 165, 58, 17&#10;19, 180, 72, 12"
+                      required style="font-family: monospace; font-size: 13px;"></textarea>
+            <div class="form-text">
+              <i class="bi bi-info-circle me-1"></i>
+              Chaque ligne = une observation. Les valeurs doivent correspondre aux colonnes définies.
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-run">
+            <i class="bi bi-check2-circle me-2"></i>Enregistrer les données
+          </button>
+          <a href="{{ url_for('data.upload') }}" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-upload me-2"></i>Importer un fichier
+          </a>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-book me-2"></i>Exemple</div>
+      <div class="card-body p-3">
+        <p style="font-size:12px;color:#6b7280;margin-bottom:8px"><strong>Colonnes :</strong></p>
+        <code style="font-size:12px">age, taille, poids, score</code>
+        <p style="font-size:12px;color:#6b7280;margin-top:12px;margin-bottom:8px"><strong>Données :</strong></p>
+        <pre style="font-size:11px;background:#f8fafc;padding:10px;border-radius:6px;margin:0">20, 170, 65, 14
+22, 165, 58, 17
+19, 180, 72, 12
+25, 175, 70, 15
+21, 168, 60, 16</pre>
+        <button class="btn btn-sm btn-outline-primary w-100 mt-3" id="fillExample">
+          <i class="bi bi-magic me-1"></i>Remplir avec cet exemple
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-lightbulb me-2"></i>Conseils</div>
+      <div class="card-body p-3" style="font-size:12px;color:#6b7280">
+        <ul class="mb-0 ps-3">
+          <li class="mb-1">Utilisez des <strong>valeurs numériques</strong> pour les analyses ML</li>
+          <li class="mb-1">Minimum <strong>10 lignes</strong> recommandées</li>
+          <li class="mb-1">Évitez les virgules dans les valeurs textuelles</li>
+          <li>Les valeurs manquantes sont gérées automatiquement</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.getElementById("fillExample")?.addEventListener("click", () => {
+  document.getElementById("columnsInput").value = "age, taille, poids, score";
+  document.getElementById("rowsData").value =
+    "20, 170, 65, 14\n22, 165, 58, 17\n19, 180, 72, 12\n25, 175, 70, 15\n21, 168, 60, 16\n23, 172, 68, 13\n18, 160, 55, 18\n24, 178, 74, 11\n20, 166, 62, 15\n22, 174, 69, 16";
+});
+</script>
+{% endblock %}
+{% endblock %}

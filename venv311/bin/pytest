@@ -1,0 +1,6 @@
+#!/home/nehemie/S2.L2/INF232/inf232_ec2/venv311/bin/python
+import sys
+from pytest import console_main
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(console_main())

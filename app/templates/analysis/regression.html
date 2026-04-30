@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}Régression {{ "simple" if analysis_type == "simple" else "multiple" }} — INF232 EC2{% endblock %}
+{% block page_title %}
+  <i class="bi bi-graph-up me-2"></i>
+  Régression linéaire {{ "simple" if analysis_type == "simple" else "multiple" }}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Formulaire paramètres -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-sliders me-2"></i>Paramètres</div>
+      <div class="card-body p-3">
+
+        <!-- Onglets Simple / Multiple -->
+        <div class="mb-3">
+          <div class="btn-group w-100" role="group">
+            <a href="{{ url_for('regression.simple') }}"
+               class="btn btn-sm {% if analysis_type == 'simple' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+              <i class="bi bi-graph-up me-1"></i>Simple
+            </a>
+            <a href="{{ url_for('regression.multiple') }}"
+               class="btn btn-sm {% if analysis_type == 'multiple' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+              <i class="bi bi-graph-up-arrow me-1"></i>Multiple
+            </a>
+          </div>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger py-2" style="font-size:13px">
+          <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" class="analysis-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          {% if analysis_type == "simple" %}
+          <div class="mb-3">
+            <label class="form-label">Variable X (prédicteur)</label>
+            <select name="x_col" class="form-select form-select-sm" required>
+              <option value="">-- Sélectionner --</option>
+              {% for col in numeric_cols %}
+              <option value="{{ col }}" {% if result and result.x_col == col %}selected{% endif %}>{{ col }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Variable Y (cible)</label>
+            <select name="y_col" class="form-select form-select-sm" required>
+              <option value="">-- Sélectionner --</option>
+              {% for col in numeric_cols %}
+              <option value="{{ col }}" {% if result and result.y_col == col %}selected{% endif %}>{{ col }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          {% else %}
+          <div class="mb-3">
+            <label class="form-label">Variables prédicteurs
+              <span class="badge bg-light text-secondary border ms-1">Ctrl+clic = multi-sélection</span>
+            </label>
+            <select name="feature_cols" class="form-select form-select-sm" multiple required>
+              {% for col in numeric_cols %}
+              <option value="{{ col }}" {% if result and col in result.feature_cols %}selected{% endif %}>{{ col }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Sélectionnez au moins 2 variables.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Variable cible (Y)</label>
+            <select name="target_col" class="form-select form-select-sm" required>
+              <option value="">-- Sélectionner --</option>
+              {% for col in numeric_cols %}
+              <option value="{{ col }}" {% if result and result.target_col == col %}selected{% endif %}>{{ col }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
+          <div class="mb-3">
+            <label class="form-label">Taille ensemble test</label>
+            <select name="test_size" class="form-select form-select-sm">
+              <option value="0.1">10%</option>
+              <option value="0.2" selected>20%</option>
+              <option value="0.3">30%</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-run w-100">
+            <i class="bi bi-play-fill me-2"></i>Lancer la régression
+          </button>
+        </form>
+
+        {% if numeric_cols|length == 0 %}
+        <div class="alert alert-warning mt-3 py-2" style="font-size:12px">
+          <i class="bi bi-exclamation-circle me-1"></i>
+          Aucune colonne numérique détectée dans le dataset.
+          <a href="{{ url_for('data.upload') }}">Changer de dataset</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Théorie -->
+    <div class="card mt-3">
+      <div class="card-header"><i class="bi bi-book me-2"></i>Rappel théorique</div>
+      <div class="card-body p-3" style="font-size:12px;color:#374151">
+        {% if analysis_type == "simple" %}
+        <p><strong>Modèle :</strong> <code>ŷ = aX + b</code></p>
+        <p><strong>R²</strong> : part de variance expliquée (0 à 1)</p>
+        <p><strong>MSE</strong> : Mean Squared Error — erreur moyenne au carré</p>
+        <p class="mb-0"><strong>RMSE</strong> : √MSE — dans l'unité de Y</p>
+        {% else %}
+        <p><strong>Modèle :</strong> <code>ŷ = a₁X₁ + a₂X₂ + … + b</code></p>
+        <p><strong>R² ajusté</strong> : pénalise l'ajout de variables non-pertinentes</p>
+        <p class="mb-0"><strong>Résidus</strong> : doivent être distribués aléatoirement autour de 0</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Résultats -->
+  <div class="col-lg-8">
+    {% if result %}
+    <div class="result-section">
+
+      <!-- Métriques -->
+      <div class="row g-3 mb-4">
+        <div class="col-4">
+          <div class="metric-card text-center">
+            <div class="metric-label">R² Score</div>
+            <div class="metric-value {% if result.r2 >= 0.85 %}text-success{% elif result.r2 >= 0.60 %}text-warning{% else %}text-danger{% endif %}">
+              {{ result.r2 }}
+            </div>
+            <div class="metric-sub">{{ result.r2_percent }}% variance expliquée</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="metric-card text-center">
+            <div class="metric-label">MSE</div>
+            <div class="metric-value" style="font-size:20px">{{ result.mse }}</div>
+            <div class="metric-sub">Mean Squared Error</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="metric-card text-center">
+            <div class="metric-label">RMSE</div>
+            <div class="metric-value" style="font-size:20px">{{ result.rmse }}</div>
+            <div class="metric-sub">Root MSE</div>
+          </div>
+        </div>
+      </div>
+
+      {% if analysis_type == "simple" %}
+      <!-- Équation -->
+      <div class="equation-box mb-4">{{ result.equation }}</div>
+      {% endif %}
+
+      {% if analysis_type == "multiple" %}
+      <!-- R² ajusté -->
+      <div class="card mb-4 p-3" style="background:#eff6ff;border-color:#bfdbfe">
+        <div class="d-flex justify-content-between align-items-center">
+          <span style="font-size:13px;color:#1e40af;font-weight:600">
+            R² ajusté : <strong>{{ result.r2_adj }}</strong>
+          </span>
+          <span style="font-size:13px;color:#1e40af">
+            Train: {{ result.n_train }} | Test: {{ result.n_test }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Coefficients -->
+      <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-list-check me-2"></i>Coefficients</div>
+        <div class="card-body p-3">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Variable</th>
+                  <th class="text-end">Coefficient</th>
+                  <th class="text-end">Impact</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="table-secondary">
+                  <td><strong>Intercept (b)</strong></td>
+                  <td class="text-end"><code>{{ result.intercept }}</code></td>
+                  <td class="text-end">—</td>
+                </tr>
+                {% for col, coef in result.coefficients.items() %}
+                <tr>
+                  <td>{{ col }}</td>
+                  <td class="text-end">
+                    <code class="{% if coef > 0 %}text-success{% else %}text-danger{% endif %}">
+                      {{ coef }}
+                    </code>
+                  </td>
+                  <td class="text-end">
+                    <span class="badge {% if coef > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                      {% if coef > 0 %}+{% endif %}
+                    </span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Graphique -->
+      <div class="card">
+        <div class="card-header"><i class="bi bi-bar-chart-line me-2"></i>Visualisation</div>
+        <div class="card-body p-3">
+          <div class="plot-container">
+            <img src="data:image/png;base64,{{ result.plot }}" alt="Régression" class="img-fluid">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- État vide -->
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-graph-up" style="font-size:52px;color:#cbd5e1"></i>
+        <h5 class="mt-3 text-muted">Configurez et lancez la régression</h5>
+        <p class="text-muted" style="font-size:13px">
+          Sélectionnez les variables dans le panneau gauche, puis cliquez sur <strong>Lancer</strong>.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

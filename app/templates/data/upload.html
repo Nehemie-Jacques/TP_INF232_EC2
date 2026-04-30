@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Importer un fichier — INF232 EC2{% endblock %}
+{% block page_title %}<i class="bi bi-upload me-2"></i>Importer un dataset{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-file-earmark-arrow-up me-2"></i>Charger un fichier CSV / Excel</div>
+      <div class="card-body p-4">
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('data.upload') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="mb-4">
+            <div class="upload-zone" id="uploadZone">
+              <div class="upload-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+              <div id="uploadZoneLabel">
+                <strong>Glissez-déposez votre fichier ici</strong><br>
+                <span style="font-size:13px;color:#9ca3af">ou cliquez pour sélectionner</span>
+              </div>
+              <div class="mt-2" style="font-size:11px;color:#cbd5e1">CSV, XLSX, XLS — max. 16 Mo</div>
+            </div>
+            <input type="file" name="file" id="fileInput" class="d-none" accept=".csv,.xlsx,.xls" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Nom du dataset <span class="text-muted fw-normal">(optionnel)</span></label>
+            <input type="text" name="dataset_name" class="form-control"
+                   placeholder="Ex : Données étudiants 2024">
+            <div class="form-text">Si vide, le nom du fichier sera utilisé.</div>
+          </div>
+
+          <button type="submit" class="btn btn-run w-100">
+            <i class="bi bi-upload me-2"></i>Charger le dataset
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Formats acceptés</div>
+      <div class="card-body p-3">
+        <div class="d-flex align-items-start gap-3 mb-3">
+          <div style="font-size:28px;color:#0F6E56"><i class="bi bi-filetype-csv"></i></div>
+          <div>
+            <div class="fw-600" style="font-size:13px">CSV (.csv)</div>
+            <div style="font-size:12px;color:#6b7280">Séparateur auto-détecté (virgule, point-virgule, tabulation)</div>
+          </div>
+        </div>
+        <div class="d-flex align-items-start gap-3">
+          <div style="font-size:28px;color:#185FA5"><i class="bi bi-file-earmark-spreadsheet"></i></div>
+          <div>
+            <div class="fw-600" style="font-size:13px">Excel (.xlsx, .xls)</div>
+            <div style="font-size:12px;color:#6b7280">Première feuille chargée automatiquement</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-lightbulb me-2"></i>Datasets exemples</div>
+      <div class="card-body p-3">
+        <p style="font-size:12px;color:#6b7280">Téléchargez un dataset de test pour explorer les fonctionnalités :</p>
+        <div class="d-flex flex-column gap-2">
+          <a href="{{ url_for('data.form') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-keyboard me-2"></i>Saisir des données manuellement
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Autres sources</div>
+      <div class="card-body p-3">
+        <a href="{{ url_for('data.form') }}" class="btn btn-outline-primary w-100 mb-2" style="font-size:13px">
+          <i class="bi bi-table me-2"></i>Saisie manuelle (formulaire)
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

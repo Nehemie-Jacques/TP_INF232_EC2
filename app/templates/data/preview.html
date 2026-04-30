@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}Aperçu du dataset — INF232 EC2{% endblock %}
+{% block page_title %}<i class="bi bi-table me-2"></i>Aperçu & Statistiques{% endblock %}
+
+{% block content %}
+<!-- Info cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="metric-card">
+      <div class="metric-label"><i class="bi bi-list-ol me-1"></i>Lignes</div>
+      <div class="metric-value">{{ info.n_rows }}</div>
+      <div class="metric-sub">observations</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="metric-card">
+      <div class="metric-label"><i class="bi bi-layout-three-columns me-1"></i>Colonnes</div>
+      <div class="metric-value">{{ info.n_cols }}</div>
+      <div class="metric-sub">variables</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="metric-card">
+      <div class="metric-label"><i class="bi bi-exclamation-triangle me-1"></i>Manquants</div>
+      <div class="metric-value {% if info.missing_values > 0 %}text-warning{% else %}text-success{% endif %}">
+        {{ info.missing_values }}
+      </div>
+      <div class="metric-sub">valeurs NaN</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="metric-card">
+      <div class="metric-label"><i class="bi bi-123 me-1"></i>Numériques</div>
+      <div class="metric-value" style="color:#0F6E56">{{ info.numeric_columns|length }}</div>
+      <div class="metric-sub">sur {{ info.n_cols }} colonnes</div>
+    </div>
+  </div>
+</div>
+
+<!-- Aperçu tableau -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-table me-2"></i>Aperçu des données (15 premières lignes)</span>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('export.export_csv') }}" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-filetype-csv me-1"></i>CSV
+      </a>
+      <a href="{{ url_for('export.export_stats_pdf') }}" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+      </a>
+      <a href="{{ url_for('export.export_stats_json') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-filetype-json me-1"></i>JSON
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:40px;color:#9ca3af">#</th>
+            {% for col in columns %}
+            <th style="font-size:12px;white-space:nowrap">
+              {{ col }}
+              {% if col in info.numeric_columns %}
+                <span class="badge bg-primary ms-1" style="font-size:9px">num</span>
+              {% else %}
+                <span class="badge bg-secondary ms-1" style="font-size:9px">cat</span>
+              {% endif %}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td style="color:#9ca3af;font-size:11px">{{ loop.index }}</td>
+            {% for val in row %}
+            <td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                title="{{ val }}">{{ val }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Stats descriptives -->
+{% if stats %}
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-calculator me-2"></i>Statistiques descriptives</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="font-size:12px">Variable</th>
+            <th style="font-size:12px;text-align:center">N</th>
+            <th style="font-size:12px;text-align:center">Moyenne</th>
+            <th style="font-size:12px;text-align:center">Écart-type</th>
+            <th style="font-size:12px;text-align:center">Min</th>
+            <th style="font-size:12px;text-align:center">Q1</th>
+            <th style="font-size:12px;text-align:center">Médiane</th>
+            <th style="font-size:12px;text-align:center">Q3</th>
+            <th style="font-size:12px;text-align:center">Max</th>
+            <th style="font-size:12px;text-align:center">Manq.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for col, s in stats.items() %}
+          <tr>
+            <td class="fw-600" style="font-size:12px">{{ col }}</td>
+            <td style="font-size:12px;text-align:center">{{ s.count }}</td>
+            <td style="font-size:12px;text-align:center">{{ s.mean }}</td>
+            <td style="font-size:12px;text-align:center">{{ s.std }}</td>
+            <td style="font-size:12px;text-align:center">{{ s.min }}</td>
+            <td style="font-size:12px;text-align:center">{{ s.q25 }}</td>
+            <td style="font-size:12px;text-align:center">{{ s.median }}</td>
+            <td style="font-size:12px;text-align:center">{{ s.q75 }}</td>
+            <td style="font-size:12px;text-align:center">{{ s.max }}</td>
+            <td style="font-size:12px;text-align:center">
+              {% if s.missing > 0 %}
+                <span class="badge bg-warning text-dark">{{ s.missing }}</span>
+              {% else %}
+                <span class="badge bg-success">0</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Graphiques -->
+<div class="row g-4">
+  {% if dist_plot %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Distribution des variables numériques</div>
+      <div class="card-body p-3">
+        <div class="plot-container">
+          <img src="data:image/png;base64,{{ dist_plot }}" alt="Distributions" class="img-fluid">
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if corr_plot %}
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-grid-3x3-gap me-2"></i>Matrice de corrélation</div>
+      <div class="card-body p-3">
+        <div class="plot-container">
+          <img src="data:image/png;base64,{{ corr_plot }}" alt="Corrélation" class="img-fluid">
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Histogramme interactif -->
+  {% if info.numeric_columns %}
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-bar-chart-fill me-2"></i>Histogramme interactif</div>
+      <div class="card-body p-3">
+        <div class="mb-3">
+          <label class="form-label">Choisir une variable</label>
+          <select class="form-select form-select-sm" id="histColSelect">
+            {% for col in info.numeric_columns %}
+            <option value="{{ col }}">{{ col }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="histLoader" class="text-center py-2 d-none">
+          <span class="spinner-border spinner-border-sm me-2"></span>Chargement…
+        </div>
+        <div class="plot-container">
+          <img id="histPlotImg" src="" alt="Histogramme" class="img-fluid"
+               style="transition: opacity 0.3s;">
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Nuage de points interactif -->
+{% if info.numeric_columns|length >= 2 %}
+<div class="card mt-4">
+  <div class="card-header"><i class="bi bi-scatter-chart me-2"></i>Nuage de points interactif</div>
+  <div class="card-body p-3">
+    <div class="row g-3 align-items-end mb-3">
+      <div class="col-md-4">
+        <label class="form-label">Variable X</label>
+        <select class="form-select form-select-sm" id="scatterX">
+          {% for col in info.numeric_columns %}
+          <option value="{{ col }}">{{ col }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Variable Y</label>
+        <select class="form-select form-select-sm" id="scatterY">
+          {% for col in info.numeric_columns %}
+          <option value="{{ col }}" {% if loop.index == 2 %}selected{% endif %}>{{ col }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary btn-sm w-100" id="scatterBtn">
+          <i class="bi bi-arrow-right-circle me-1"></i>Tracer
+        </button>
+      </div>
+    </div>
+    <div class="plot-container">
+      <img id="scatterPlotImg" src="" alt="Scatter" class="img-fluid">
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

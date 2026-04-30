@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — INF232 EC2{% endblock %}
+{% block page_title %}<i class="bi bi-grid-1x2 me-2"></i>Tableau de bord{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <!-- Stat cards -->
+  <div class="col-md-3">
+    <div class="metric-card">
+      <div class="metric-label"><i class="bi bi-database me-1"></i>Datasets</div>
+      <div class="metric-value text-primary">{{ datasets|length }}</div>
+      <div class="metric-sub">Jeux de données chargés</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="metric-card">
+      <div class="metric-label"><i class="bi bi-activity me-1"></i>Analyses</div>
+      <div class="metric-value" style="color:#0F6E56">{{ recent_analyses|length }}</div>
+      <div class="metric-sub">Récentes (5 dernières)</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="metric-card">
+      <div class="metric-label"><i class="bi bi-table me-1"></i>Dataset actif</div>
+      <div class="metric-value" style="font-size:16px; font-weight:700; padding-top:4px">
+        {% if current_dataset %}
+          {{ current_dataset.name|truncate(22) }}
+        {% else %}
+          <span style="color:#9ca3af; font-size:14px">Aucun sélectionné</span>
+        {% endif %}
+      </div>
+      {% if current_dataset %}
+      <div class="metric-sub">{{ current_dataset.n_rows }} × {{ current_dataset.n_cols }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="metric-card">
+      <div class="metric-label"><i class="bi bi-person me-1"></i>Utilisateur</div>
+      <div class="metric-value" style="font-size:18px; padding-top:4px">{{ current_user.username }}</div>
+      <div class="metric-sub">{{ current_user.email }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Mes datasets -->
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-database me-2"></i>Mes datasets</span>
+        <a href="{{ url_for('data.upload') }}" class="btn btn-sm btn-primary">
+          <i class="bi bi-plus-lg me-1"></i>Importer
+        </a>
+      </div>
+      <div class="card-body p-0">
+        {% if datasets %}
+        <div class="p-3">
+          {% for ds in datasets %}
+          <div class="dataset-row">
+            <div class="dataset-icon">
+              <i class="bi bi-{% if ds.source == 'form' %}keyboard{% else %}filetype-csv{% endif %}"></i>
+            </div>
+            <div class="flex-grow-1 min-w-0">
+              <div class="fw-600" style="font-size:13px">{{ ds.name|truncate(40) }}</div>
+              <div style="font-size:11px; color:#9ca3af">
+                {{ ds.n_rows }} lignes × {{ ds.n_cols }} colonnes
+                &nbsp;·&nbsp; {{ ds.created_at.strftime('%d/%m/%Y') }}
+                &nbsp;·&nbsp;
+                <span class="badge bg-light text-secondary border">{{ ds.source }}</span>
+              </div>
+            </div>
+            <div class="d-flex gap-2 flex-shrink-0">
+              <a href="{{ url_for('data.select_dataset', dataset_id=ds.id) }}"
+                 class="btn btn-xs btn-outline-primary"
+                 style="font-size:11px; padding:3px 10px"
+                 data-bs-toggle="tooltip" title="Sélectionner ce dataset">
+                <i class="bi bi-check2-circle"></i>
+              </a>
+              <form method="POST" action="{{ url_for('data.delete_dataset', dataset_id=ds.id) }}"
+                    onsubmit="return confirm('Supprimer ce dataset ?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-xs btn-outline-danger"
+                        style="font-size:11px; padding:3px 10px">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-inbox" style="font-size:40px; color:#cbd5e1"></i>
+          <p class="mt-3 mb-0" style="font-size:14px">Aucun dataset importé</p>
+          <a href="{{ url_for('data.upload') }}" class="btn btn-sm btn-primary mt-3">
+            <i class="bi bi-upload me-1"></i>Importer un fichier
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Accès rapide + Historique -->
+  <div class="col-lg-5">
+    <!-- Accès rapide -->
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-lightning-charge me-2"></i>Accès rapide</div>
+      <div class="card-body p-3">
+        <div class="row g-2">
+          {% set quick = [
+            ('data.upload', 'upload', 'Importer', 'primary'),
+            ('data.preview', 'table', 'Aperçu', 'secondary'),
+            ('regression.simple', 'graph-up', 'Régression', 'success'),
+            ('reduction.pca', 'diagram-2', 'PCA', 'info'),
+            ('supervised.run_model', 'tree', 'Random Forest', 'warning'),
+            ('unsupervised.kmeans', 'collection', 'K-Means', 'danger'),
+          ] %}
+          {% for endpoint, icon, label, color in quick %}
+          <div class="col-6">
+            {% if endpoint == 'supervised.run_model' %}
+            <a href="{{ url_for(endpoint, model_name='random_forest') }}"
+               class="btn btn-outline-{{ color }} w-100 text-start" style="font-size:12px; padding:8px 12px">
+              <i class="bi bi-{{ icon }} me-2"></i>{{ label }}
+            </a>
+            {% else %}
+            <a href="{{ url_for(endpoint) }}"
+               class="btn btn-outline-{{ color }} w-100 text-start" style="font-size:12px; padding:8px 12px">
+              <i class="bi bi-{{ icon }} me-2"></i>{{ label }}
+            </a>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Historique analyses -->
+    <div class="card">
+      <div class="card-header"><i class="bi bi-clock-history me-2"></i>Dernières analyses</div>
+      <div class="card-body p-3">
+        {% if recent_analyses %}
+        {% for a in recent_analyses %}
+        <div class="d-flex align-items-center gap-3 py-2 border-bottom">
+          <div style="width:32px;height:32px;background:#eff6ff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#185FA5;flex-shrink:0">
+            <i class="bi bi-activity"></i>
+          </div>
+          <div class="flex-grow-1">
+            <div style="font-size:12px;font-weight:600">{{ a.analysis_type.replace('_',' ').title() }}</div>
+            <div style="font-size:10px;color:#9ca3af">{{ a.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center py-3 mb-0" style="font-size:13px">
+          <i class="bi bi-clock me-1"></i>Aucune analyse effectuée
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
